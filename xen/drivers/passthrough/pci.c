@@ -860,6 +860,8 @@ static int deassign_device(struct domain *d, uint16_t seg, uint8_t bus,
     if ( ret )
         goto out;
 
+    vpci_deassign_device(pdev);
+
     if ( pdev->domain == hardware_domain  )
         pdev->quarantine = false;
 
@@ -1423,6 +1425,8 @@ static int assign_device(struct domain *d, struct pci_dev *pdev, u32 flag)
     if ( pdev->broken && d != hardware_domain && d != dom_io )
         goto done;
 
+    vpci_deassign_device(pdev);
+
     rc = pdev_msix_assign(d, pdev);
     if ( rc )
         goto done;
@@ -1447,6 +1451,17 @@ static int assign_device(struct domain *d, struct pci_dev *pdev, u32 flag)
             break;
         rc = iommu_call(hd->platform_ops, assign_device, d, devfn,
                         pci_to_dev(pdev), flag);
+    }
+    if ( rc )
+        goto done;
+
+    devfn = pdev->devfn;
+    rc = vpci_assign_device(pdev);
+    if ( rc && deassign_device(d, pdev->seg, pdev->bus, devfn) )
+    {
+        printk(XENLOG_ERR "%pd: %pp was left partially assigned\n",
+               d, &PCI_SBDF(pdev->seg, pdev->bus, devfn));
+        domain_crash(d);
     }
 
  done:

@@ -379,7 +379,7 @@ static int remove_node_resources(struct dt_device_node *device_node)
     /* Check if iommu property exists. */
     if ( dt_get_property(device_node, "iommus", &len) )
     {
-        if ( dt_device_is_protected(device_node) )
+        if ( device_is_protected(dt_to_dev(device_node)) )
         {
             rc = iommu_remove_dt_device(device_node);
             if ( rc < 0 )

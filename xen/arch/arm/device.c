@@ -354,7 +354,7 @@ int handle_device(struct domain *d, struct dt_device_node *dev, p2m_type_t p2mt,
             return res;
         }
 
-        if ( dt_device_is_protected(dev) )
+        if ( device_is_protected(dt_to_dev(dev)) )
         {
             dt_dprintk("%s setup iommu\n", dt_node_full_name(dev));
             res = iommu_assign_dt_device(d, dev);

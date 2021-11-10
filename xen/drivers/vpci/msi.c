@@ -171,6 +171,8 @@ static void cf_check mask_write(
     if ( !dmask )
         return;
 
+    msi->mask = val;
+
     if ( msi->enabled )
     {
         unsigned int i;
@@ -182,8 +184,6 @@ static void cf_check mask_write(
             __clear_bit(i, &dmask);
         }
     }
-
-    msi->mask = val;
 }
 
 static int cf_check init_msi(struct pci_dev *pdev)
@@ -219,6 +219,7 @@ static int cf_check init_msi(struct pci_dev *pdev)
     /* Get the maximum number of vectors the device supports. */
     control = pci_conf_read16(pdev->sbdf, msi_control_reg(pos));
 
+    pdev->msi_maxvec = multi_msi_capable(control);
     /*
      * FIXME: I've only been able to test this code with devices using a single
      * MSI interrupt and no mask register.

@@ -302,7 +302,7 @@ static uint32_t its_get_host_devid(struct domain *d, uint32_t guest_devid)
     if ( !pci_passthrough_enabled )
         return guest_devid;
 
-    if ( !is_hardware_domain(d) )
+    if ( !is_hardware_pci_domain(d) )
     {
         pci_sbdf_t sbdf = (pci_sbdf_t)guest_devid;
         const struct pci_dev *pdev;
@@ -749,7 +749,7 @@ static int its_handle_mapd(struct virt_its *its, uint64_t *cmdptr)
      * announce pass-through of devices.
      */
 
-    if ( !is_hardware_domain(its->d) )
+    if ( !is_hardware_pci_domain(its->d) )
         host_doorbell_address = its_get_host_doorbell(its, guest_devid);
     else
         host_doorbell_address = its->doorbell_address;
@@ -1564,7 +1564,7 @@ unsigned int vgic_v3_its_count(const struct domain *d)
     unsigned int ret = 0;
 
     /* Only Dom0 can use emulated ITSes so far. */
-    if ( !is_hardware_domain(d) )
+    if ( !is_hardware_pci_domain(d) )
         return 0;
 
     list_for_each_entry(hw_its, &host_its_list, entry)
@@ -1576,6 +1576,7 @@ unsigned int vgic_v3_its_count(const struct domain *d)
 /*
  * For a hardware domain, this will iterate over the host ITSes
  * and map one virtual ITS per host ITS at the same address.
+ * If pci-scan is enabled, the hardware domain will not use the real host ITSes.
  */
 int vgic_v3_its_init_domain(struct domain *d)
 {
@@ -1587,7 +1588,7 @@ int vgic_v3_its_init_domain(struct domain *d)
     spin_lock_init(&d->arch.vgic.its_devices_lock);
     d->arch.vgic.its_devices = RB_ROOT;
 
-    if ( is_hardware_domain(d) )
+    if ( is_hardware_pci_domain(d) )
     {
         struct host_its *hw_its;
 

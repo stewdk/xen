@@ -43,7 +43,7 @@ static int cf_check map_range(
     for ( ; ; )
     {
         /* Start address of the BAR as seen by the guest. */
-        gfn_t start_gfn = _gfn(PFN_DOWN(is_hardware_domain(map->d)
+        gfn_t start_gfn = _gfn(PFN_DOWN(is_hardware_pci_domain(map->d)
                                         ? map->bar->addr
                                         : map->bar->guest_reg));
         /* Physical start address of the BAR. */
@@ -670,7 +670,7 @@ static int cf_check init_bars(struct pci_dev *pdev)
     struct vpci_header *header = &pdev->vpci->header;
     struct vpci_bar *bars = header->bars;
     int rc;
-    bool is_hwdom = is_hardware_domain(pdev->domain);
+    bool is_hwdom = is_hardware_pci_domain(pdev->domain);
 
     switch ( pci_conf_read8(pdev->sbdf, PCI_HEADER_TYPE) & 0x7f )
     {

@@ -213,6 +213,7 @@ static inline void arch_move_irqs(struct vcpu *v) { }
 struct msi_info;
 int allocate_and_map_gsi_pirq(struct domain *d, int index, int *pirq_p);
 int allocate_and_map_msi_pirq(struct domain *d, int index, int *pirq_p,
-                              int type, struct msi_info *msi);
+                              int type, struct msi_info *msi,
+			      bool use_pci_lock);
 
 #endif /* _ASM_HW_IRQ_H */

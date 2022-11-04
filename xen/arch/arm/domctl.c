@@ -48,6 +48,14 @@ static int handle_vuart_init(struct domain *d,
     return rc;
 }
 
+/* Describe an IRQ assigned to a guest */
+/* Copied from irq.c */
+struct irq_guest
+{
+    struct domain *d;
+    unsigned int virq;
+};
+
 long arch_do_domctl(struct xen_domctl *domctl, struct domain *d,
                     XEN_GUEST_HANDLE_PARAM(xen_domctl_t) u_domctl)
 {
@@ -112,6 +120,17 @@ long arch_do_domctl(struct xen_domctl *domctl, struct domain *d,
         if ( !vgic_reserve_virq(d, virq) )
             return -EBUSY;
 
+        if (irq_to_desc(irq)->action) {
+            struct domain *ad;
+            ad = ((struct irq_guest *)(irq_to_desc(irq)->action->dev_id))->d;
+            if (d != ad) {
+                printk("%s:%d:%s() warning: forcing IRQ assignment\n", __FILE__, __LINE__, __func__);
+                rc = release_guest_irq(ad, irq);
+                if (rc) {
+                    printk("%s:%d:%s() error: could not release IRQ\n", __FILE__, __LINE__, __func__);
+                }
+            }
+        }
         rc = route_irq_to_guest(d, virq, irq, "routed IRQ");
         if ( rc )
             vgic_free_virq(d, virq);

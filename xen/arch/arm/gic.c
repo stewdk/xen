@@ -167,12 +167,15 @@ int gic_remove_irq_from_guest(struct domain *d, unsigned int virq,
     ASSERT(test_bit(_IRQ_GUEST, &desc->status));
     ASSERT(!is_lpi(virq));
 
+    /* HACK! HACK! HACK! */
+#if 0
     /*
      * Removing an interrupt while the domain is running may have
      * undesirable effect on the vGIC emulation.
      */
     if ( !d->is_dying )
         return -EBUSY;
+#endif
 
     desc->handler->shutdown(desc);
 

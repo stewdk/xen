@@ -896,7 +896,8 @@ static int make_vpl011_uart_node(libxl__gc *gc, void *fdt,
 
 static int make_vpci_node(libxl__gc *gc, void *fdt,
                           const struct arch_info *ainfo,
-                          struct xc_dom_image *dom)
+                          struct xc_dom_image *dom,
+                          libxl_gic_version gic_version)
 {
     int res;
     const uint64_t vpci_ecam_base = GUEST_VPCI_ECAM_BASE;
@@ -935,9 +936,34 @@ static int make_vpci_node(libxl__gc *gc, void *fdt,
         GUEST_VPCI_PREFETCH_MEM_SIZE);
     if (res) return res;
 
-    res = fdt_property_values(gc, fdt, "msi-map", 4, 0, GUEST_PHANDLE_ITS,
-                              0, 0x10000);
-    if (res) return res;
+    if (gic_version == LIBXL_GIC_VERSION_V3) {
+        res = fdt_property_values(gc, fdt, "msi-map", 4, 0, GUEST_PHANDLE_ITS,
+                                  0, 0x10000);
+        if (res) return res;
+    } else if (gic_version == LIBXL_GIC_VERSION_V2) {
+        res = fdt_property_cell(fdt, "#interrupt-cells", 1);
+        if (res) return res;
+
+        /*
+         * Documentation/devicetree/bindings/pci/host-generic-pci.txt/yaml
+         * Documentation/devicetree/bindings/pci/pci.txt
+         * https://www.devicetree.org/open-firmware/practice/imap/imap0_9d.pdf
+         */
+        res = fdt_property_values(gc, fdt, "interrupt-map", 8,
+            /* PCI_DEVICE(3) */
+            0, 0, 0,
+            /* INT#(1) */
+            1,
+            /* CONTROLLER(PHANDLE) */
+            GUEST_PHANDLE_GIC,
+            /* CONTROLLER_DATA(3) */
+            0, 116 /* IRQ 148, PCIe_INTx */, DT_IRQ_TYPE_LEVEL_HIGH);
+        if (res) return res;
+
+        /* PCI_DEVICE(3)  INT#(1) */
+        res = fdt_property_values(gc, fdt, "interrupt-map-mask", 1, 7);
+        if (res) return res;
+    }
 
     res = fdt_end_node(fdt);
     if (res) return res;
@@ -1401,7 +1427,7 @@ next_resize:
             FDT( make_optee_node(gc, fdt) );
 
         if (d_config->num_pcidevs)
-            FDT( make_vpci_node(gc, fdt, ainfo, dom) );
+            FDT( make_vpci_node(gc, fdt, ainfo, dom, info->arch_arm.gic_version) );
 
         for (i = 0; i < d_config->num_disks; i++) {
             libxl_device_disk *disk = &d_config->disks[i];

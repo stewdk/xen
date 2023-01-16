@@ -347,7 +347,7 @@ static int __init domU_assign_pci_device(struct domain *d,
         count -= 3;
     }
 
-    rc = make_vpci_node(kinfo->fdt);
+    rc = make_vpci_node(d, kinfo->fdt);
     if ( rc )
         return rc;
 

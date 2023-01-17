@@ -32,7 +32,7 @@ static int vpci_mmio_read(struct vcpu *v, mmio_info_t *info,
     /* data is needed to prevent a pointer cast on 32bit */
     unsigned long data;
 
-    ASSERT(!bridge == !is_hardware_domain(v->domain));
+    ASSERT(!bridge == !is_domain_direct_mapped(v->domain));
 
     sbdf = vpci_sbdf_from_gpa(bridge, info->gpa);
 
@@ -40,7 +40,8 @@ static int vpci_mmio_read(struct vcpu *v, mmio_info_t *info,
      * For the passed through devices we need to map their virtual SBDF
      * to the physical PCI device being passed through.
      */
-    if ( !bridge && !vpci_translate_virtual_device(v->domain, &sbdf) )
+    if ( !is_hardware_domain(v->domain) &&
+         !vpci_translate_virtual_device(v->domain, &sbdf) )
     {
         *r = ~0ul;
         return 1;
@@ -64,7 +65,7 @@ static int vpci_mmio_write(struct vcpu *v, mmio_info_t *info,
     struct pci_host_bridge *bridge = p;
     pci_sbdf_t sbdf;
 
-    ASSERT(!bridge == !is_hardware_domain(v->domain));
+    ASSERT(!bridge == !is_domain_direct_mapped(v->domain));
 
     sbdf = vpci_sbdf_from_gpa(bridge, info->gpa);
 
@@ -72,7 +73,8 @@ static int vpci_mmio_write(struct vcpu *v, mmio_info_t *info,
      * For the passed through devices we need to map their virtual SBDF
      * to the physical PCI device being passed through.
      */
-    if ( !bridge && !vpci_translate_virtual_device(v->domain, &sbdf) )
+    if ( !is_hardware_domain(v->domain) &&
+         !vpci_translate_virtual_device(v->domain, &sbdf) )
         return 1;
 
     return vpci_ecam_write(sbdf, ECAM_REG_OFFSET(info->gpa),

@@ -437,7 +437,7 @@ long do_sysctl(XEN_GUEST_HANDLE_PARAM(xen_sysctl_t) u_sysctl)
         {
             physdev_pci_device_t dev;
             uint32_t node;
-            const struct pci_dev *pdev;
+            struct pci_dev *pdev;
 
             if ( copy_from_guest_offset(&dev, ti->devs, i, 1) )
             {
@@ -453,8 +453,11 @@ long do_sysctl(XEN_GUEST_HANDLE_PARAM(xen_sysctl_t) u_sysctl)
                 node = XEN_INVALID_NODE_ID;
             else
                 node = pdev->node;
-            pcidevs_unlock();
 
+            if ( pdev )
+                pcidev_put(pdev);
+
+            pcidevs_unlock();
             if ( copy_to_guest_offset(ti->nodes, i, &node, 1) )
             {
                 ret = -EFAULT;

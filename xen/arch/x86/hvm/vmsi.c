@@ -914,7 +914,7 @@ int vpci_msix_arch_print(const struct vpci_msix *msix)
 
             spin_unlock(&msix->pdev->vpci->lock);
             process_pending_softirqs();
-            /* NB: we assume that pdev cannot go away for an alive domain. */
+
             if ( !pdev->vpci || !spin_trylock(&pdev->vpci->lock) )
                 return -EBUSY;
             if ( pdev->vpci->msix != msix )

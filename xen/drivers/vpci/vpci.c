@@ -320,8 +320,8 @@ static uint32_t merge_result(uint32_t data, uint32_t new, unsigned int size,
 
 uint32_t vpci_read(pci_sbdf_t sbdf, unsigned int reg, unsigned int size)
 {
-    const struct domain *d = current->domain;
-    const struct pci_dev *pdev;
+    struct domain *d = current->domain;
+    struct pci_dev *pdev;
     const struct vpci_register *r;
     unsigned int data_offset = 0;
     uint32_t data = ~(uint32_t)0;
@@ -335,7 +335,11 @@ uint32_t vpci_read(pci_sbdf_t sbdf, unsigned int reg, unsigned int size)
     /* Find the PCI dev matching the address. */
     pdev = pci_get_pdev(d, sbdf);
     if ( !pdev || !pdev->vpci )
+    {
+        if ( pdev )
+            pcidev_put(pdev);
         return vpci_read_hw(sbdf, reg, size);
+    }
 
     spin_lock(&pdev->vpci->lock);
 
@@ -381,6 +385,7 @@ uint32_t vpci_read(pci_sbdf_t sbdf, unsigned int reg, unsigned int size)
         ASSERT(data_offset < size);
     }
     spin_unlock(&pdev->vpci->lock);
+    pcidev_put(pdev);
 
     if ( data_offset < size )
     {
@@ -423,8 +428,8 @@ static void vpci_write_helper(const struct pci_dev *pdev,
 void vpci_write(pci_sbdf_t sbdf, unsigned int reg, unsigned int size,
                 uint32_t data)
 {
-    const struct domain *d = current->domain;
-    const struct pci_dev *pdev;
+    struct domain *d = current->domain;
+    struct pci_dev *pdev;
     const struct vpci_register *r;
     unsigned int data_offset = 0;
     const unsigned long *ro_map = pci_get_ro_map(sbdf.seg);
@@ -446,6 +451,8 @@ void vpci_write(pci_sbdf_t sbdf, unsigned int reg, unsigned int size,
     pdev = pci_get_pdev(d, sbdf);
     if ( !pdev || !pdev->vpci )
     {
+        if ( pdev )
+            pcidev_put(pdev);
         vpci_write_hw(sbdf, reg, size, data);
         return;
     }
@@ -486,6 +493,7 @@ void vpci_write(pci_sbdf_t sbdf, unsigned int reg, unsigned int size,
         ASSERT(data_offset < size);
     }
     spin_unlock(&pdev->vpci->lock);
+    pcidev_put(pdev);
 
     if ( data_offset < size )
         /* Tailing gap, write the remaining. */

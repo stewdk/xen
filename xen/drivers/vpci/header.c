@@ -162,14 +162,11 @@ bool vpci_process_pending(struct vcpu *v)
         rangeset_destroy(v->vpci.mem);
         v->vpci.mem = NULL;
         if ( rc )
-            /*
-             * FIXME: in case of failure remove the device from the domain.
-             * Note that there might still be leftover mappings. While this is
-             * safe for Dom0, for DomUs the domain will likely need to be
-             * killed in order to avoid leaking stale p2m mappings on
-             * failure.
-             */
+        {
             vpci_remove_device(v->vpci.pdev);
+            if ( !is_hardware_domain(v->domain) )
+                domain_crash(v->domain);
+        }
     }
 
     return false;

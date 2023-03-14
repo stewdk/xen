@@ -65,6 +65,7 @@ void vpci_remove_device(struct pci_dev *pdev)
     xfree(pdev->vpci->msi);
     xfree(pdev->vpci);
     pdev->vpci = NULL;
+    pcidev_put(pdev);
 }
 
 int vpci_add_handlers(struct pci_dev *pdev)
@@ -74,6 +75,8 @@ int vpci_add_handlers(struct pci_dev *pdev)
 
     if ( !has_vpci(pdev->domain) )
         return 0;
+
+    pcidev_get(pdev);
 
     /* We should not get here twice for the same device. */
     ASSERT(!pdev->vpci);

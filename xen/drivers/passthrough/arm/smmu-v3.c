@@ -1564,6 +1564,14 @@ err_free_master:
 	return ret;
 }
 
+#ifdef CONFIG_HAS_PCI
+static int arm_smmu_remove_device(u8 devfn, struct device *dev)
+{
+    /* XXX Implement me */
+    ASSERT_UNREACHABLE();
+}
+#endif
+
 static int arm_smmu_dt_xlate(struct device *dev,
 				const struct dt_phandle_args *args)
 {
@@ -2808,6 +2816,9 @@ static const struct iommu_ops arm_smmu_iommu_ops = {
 	.unmap_page		= arm_iommu_unmap_page,
 	.dt_xlate		= arm_smmu_dt_xlate,
 	.add_device		= arm_smmu_add_device,
+#ifdef CONFIG_HAS_PCI
+	.remove_device = arm_smmu_remove_device,
+#endif
 };
 
 static __init int arm_smmu_dt_init(struct dt_device_node *dev,

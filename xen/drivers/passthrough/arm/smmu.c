@@ -921,6 +921,14 @@ static int arm_smmu_dt_add_device_generic(u8 devfn, struct device *dev)
 	return arm_smmu_dt_add_device_legacy(smmu, dev, fwspec);
 }
 
+#ifdef CONFIG_HAS_PCI
+static int arm_smmu_remove_device(u8 devfn, struct device *dev)
+{
+	/* XXX Implement me */
+	ASSERT_UNREACHABLE();
+}
+#endif
+
 static int arm_smmu_dt_xlate_generic(struct device *dev,
 				    const struct dt_phandle_args *spec)
 {
@@ -2937,6 +2945,9 @@ static const struct iommu_ops arm_smmu_iommu_ops = {
     .map_page = arm_iommu_map_page,
     .unmap_page = arm_iommu_unmap_page,
     .dt_xlate = arm_smmu_dt_xlate_generic,
+#ifdef CONFIG_HAS_PCI
+    .remove_device = arm_smmu_remove_device,
+#endif
 };
 
 static struct arm_smmu_device *find_smmu(const struct device *dev)

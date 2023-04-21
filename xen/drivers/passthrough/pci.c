@@ -1525,8 +1525,7 @@ static int __init _assign_hwdom_pci_devices(struct pci_seg *pseg, void *arg)
 
         if ( is_pci_endpoint && (pdev->domain == dom_io) )
         {
-            ret = assign_device(hardware_domain, pdev->seg, pdev->bus,
-                                pdev->devfn, 0);
+            ret = assign_device(hardware_domain, pdev, 0);
             if ( ret < 0 )
             {
                 printk(XENLOG_ERR
@@ -1553,9 +1552,11 @@ void __init assign_hwdom_pci_devices(void)
 int pci_assign_device(struct domain *d, u16 seg, u8 bus, u8 devfn, u32 flag)
 {
     int ret;
+    struct pci_dev *pdev;
 
     pcidevs_lock();
-    ret = assign_device(d, seg, bus, devfn, flag);
+    pdev = pci_get_pdev(NULL, PCI_SBDF(seg, bus, devfn));
+    ret = assign_device(d, pdev, flag);
     pcidevs_unlock();
 
     return ret;

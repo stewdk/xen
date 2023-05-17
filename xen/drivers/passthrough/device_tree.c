@@ -247,6 +247,7 @@ int iommu_add_dt_pci_sideband_ids(struct pci_dev *pdev)
     struct device *dev = pci_to_dev(pdev);
     const struct dt_device_node *np;
     int rc = NO_IOMMU;
+    unsigned int devfn = pdev->devfn;
 
     if ( !iommu_enabled )
         return NO_IOMMU;
@@ -271,21 +272,27 @@ int iommu_add_dt_pci_sideband_ids(struct pci_dev *pdev)
     if ( !ops->dt_xlate )
         return -EINVAL;
 
-    /*
-     * According to the Documentation/devicetree/bindings/pci/pci-iommu.txt
-     * from Linux.
-     */
-    rc = iommu_dt_pci_map_id(np, PCI_BDF(pdev->bus, pdev->devfn), "iommu-map",
-                             "iommu-map-mask", &iommu_spec.np, iommu_spec.args);
-    if ( rc )
-        return rc == -ENODEV ? NO_IOMMU : rc;
+    do {
+        /*
+         * According to the Documentation/devicetree/bindings/pci/pci-iommu.txt
+         * from Linux.
+         */
+        rc = iommu_dt_pci_map_id(np, PCI_BDF(pdev->bus, devfn), "iommu-map",
+                                 "iommu-map-mask", &iommu_spec.np, iommu_spec.args);
+        if ( rc )
+            return rc == -ENODEV ? NO_IOMMU : rc;
 
-    rc = iommu_dt_xlate(dev, &iommu_spec);
-    if ( rc < 0 )
-    {
-        iommu_fwspec_free(dev);
-        return -EINVAL;
+        rc = iommu_dt_xlate(dev, &iommu_spec);
+        if ( rc < 0 )
+        {
+            iommu_fwspec_free(dev);
+            return -EINVAL;
+        }
+
+        devfn += pdev->phantom_stride;
     }
+    while ( devfn != pdev->devfn &&
+            PCI_SLOT(devfn) == PCI_SLOT(pdev->devfn));
 
     return rc;
 }

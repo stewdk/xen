@@ -141,8 +141,10 @@ int iommu_add_dt_device(struct dt_device_node *np)
         return -EINVAL;
 
     /*
-     * The device may already have been registered. As there is no harm in
-     * it just return success early.
+     * Devices that appear in the legacy mmu-masters list may have already been
+     * registered with the SMMU. In case a device has both a mmu-masters entry
+     * and iommus property, there is no need to register it again. In this case
+     * simply return success early.
      */
     if ( dev_iommu_fwspec_get(dev) )
         return 0;

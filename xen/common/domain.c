@@ -705,6 +705,11 @@ struct domain *domain_create(domid_t domid,
 #ifdef CONFIG_HAS_PIRQ
     if ( !is_idle_domain(d) )
     {
+        err = -EINVAL;
+        if ( !is_hardware_domain(d) && (config->flags & XEN_DOMCTL_CDF_vpci) &&
+             !IS_ENABLED(CONFIG_HAS_VPCI_GUEST_SUPPORT) )
+            goto fail;
+
         if ( !is_hardware_domain(d) )
             d->nr_pirqs = nr_static_irqs + extra_domU_irqs;
         else

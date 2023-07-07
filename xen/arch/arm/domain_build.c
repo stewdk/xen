@@ -1064,7 +1064,7 @@ static void __init assign_static_memory_11(struct domain *d,
 #endif
 
 /*
- * When PCI passthrough is available we want to keep the
+ * When HAS_PCI is enabled we want to keep the
  * "linux,pci-domain" in sync for every host bridge.
  *
  * Xen may not have a driver for all the host bridges. So we have
@@ -1079,9 +1079,6 @@ static int __init handle_linux_pci_domain(struct kernel_info *kinfo,
 {
     uint16_t segment;
     int res;
-
-    if ( !is_pci_passthrough_enabled() )
-        return 0;
 
     if ( !dt_device_type_is_equal(node, "pci") )
         return 0;

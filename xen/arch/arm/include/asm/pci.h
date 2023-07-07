@@ -21,8 +21,6 @@
 
 #define pci_to_dev(pcidev) (&(pcidev)->arch.dev)
 
-extern bool pci_passthrough_enabled;
-
 /* Arch pci dev struct */
 struct arch_pci_dev {
     struct device dev;
@@ -111,11 +109,6 @@ pci_find_host_bridge_node(const struct pci_dev *pdev);
 int pci_get_host_bridge_segment(const struct dt_device_node *node,
                                 uint16_t *segment);
 
-static always_inline bool is_pci_passthrough_enabled(void)
-{
-    return pci_passthrough_enabled;
-}
-
 void arch_pci_init_pdev(struct pci_dev *pdev);
 
 int pci_get_new_domain_nr(void);
@@ -131,11 +124,6 @@ bool pci_check_bar(const struct pci_dev *pdev, mfn_t start, mfn_t end);
 #else   /*!CONFIG_HAS_PCI*/
 
 struct arch_pci_dev { };
-
-static always_inline bool is_pci_passthrough_enabled(void)
-{
-    return false;
-}
 
 struct pci_dev;
 

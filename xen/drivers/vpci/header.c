@@ -792,6 +792,16 @@ static int cf_check init_bars(struct pci_dev *pdev)
     if ( !is_hwdom )
         cmd_write(pdev, PCI_COMMAND, cmd & PCI_COMMAND_VGA_PALETTE, header);
 
+    rc = vpci_add_register(pdev->vpci, vpci_hw_read16, NULL, PCI_VENDOR_ID,
+                           2, NULL);
+    if ( rc )
+        return rc;
+
+    rc = vpci_add_register(pdev->vpci, vpci_hw_read16, NULL, PCI_DEVICE_ID,
+                           2, NULL);
+    if ( rc )
+        return rc;
+
     /* Setup a handler for the command register. */
     if ( is_hwdom )
         rc = vpci_add_register(pdev->vpci, vpci_hw_read16, cmd_write, PCI_COMMAND,

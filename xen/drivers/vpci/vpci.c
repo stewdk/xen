@@ -29,6 +29,7 @@ struct vpci_register {
     unsigned int offset;
     void *private;
     struct list_head node;
+    uint32_t rw1c_mask;
 };
 
 #ifdef __XEN__
@@ -248,9 +249,15 @@ uint32_t cf_check vpci_hw_read32(
     return pci_conf_read32(pdev->sbdf, reg);
 }
 
-int vpci_add_register(struct vpci *vpci, vpci_read_t *read_handler,
-                      vpci_write_t *write_handler, unsigned int offset,
-                      unsigned int size, void *data)
+void cf_check vpci_hw_write16(
+    const struct pci_dev *pdev, unsigned int reg, uint32_t val, void *data)
+{
+    pci_conf_write16(pdev->sbdf, reg, val);
+}
+
+static int add_register(struct vpci *vpci, vpci_read_t *read_handler,
+                        vpci_write_t *write_handler, unsigned int offset,
+                        unsigned int size, void *data, uint32_t rw1c_mask)
 {
     struct list_head *prev;
     struct vpci_register *r;
@@ -270,6 +277,7 @@ int vpci_add_register(struct vpci *vpci, vpci_read_t *read_handler,
     r->size = size;
     r->offset = offset;
     r->private = data;
+    r->rw1c_mask = rw1c_mask;
 
     spin_lock(&vpci->lock);
 
@@ -294,6 +302,22 @@ int vpci_add_register(struct vpci *vpci, vpci_read_t *read_handler,
     spin_unlock(&vpci->lock);
 
     return 0;
+}
+
+int vpci_add_register(struct vpci *vpci, vpci_read_t *read_handler,
+                      vpci_write_t *write_handler, unsigned int offset,
+                      unsigned int size, void *data)
+{
+    return add_register(vpci, read_handler, write_handler, offset, size, data,
+                        0);
+}
+
+int vpci_add_rw1c_register(struct vpci *vpci, vpci_read_t *read_handler,
+                           vpci_write_t *write_handler, unsigned int offset,
+                           unsigned int size, void *data, uint32_t rw1c_mask)
+{
+    return add_register(vpci, read_handler, write_handler, offset, size, data,
+                        rw1c_mask);
 }
 
 int vpci_remove_register(struct vpci *vpci, unsigned int offset,
@@ -530,11 +554,6 @@ uint32_t vpci_read(pci_sbdf_t sbdf, unsigned int reg, unsigned int size)
 
 /*
  * Perform a maybe partial write to a register.
- *
- * Note that this will only work for simple registers, if Xen needs to
- * trap accesses to rw1c registers (like the status PCI header register)
- * the logic in vpci_write will have to be expanded in order to correctly
- * deal with them.
  */
 static void vpci_write_helper(const struct pci_dev *pdev,
                               const struct vpci_register *r, unsigned int size,
@@ -547,6 +566,7 @@ static void vpci_write_helper(const struct pci_dev *pdev,
         uint32_t val;
 
         val = r->read(pdev, r->offset, r->private);
+        val &= ~r->rw1c_mask;
         data = merge_result(val, data, size, offset);
     }
 

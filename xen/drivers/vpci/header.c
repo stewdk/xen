@@ -554,6 +554,18 @@ static uint32_t guest_cmd_read(const struct pci_dev *pdev, unsigned int reg,
     return header->guest_cmd;
 }
 
+static uint32_t cf_check status_read(const struct pci_dev *pdev,
+                                     unsigned int reg, void *data)
+{
+    struct vpci_header *header = data;
+    uint32_t status = pci_conf_read16(pdev->sbdf, reg);
+
+    if ( header->mask_cap_list )
+        status &= ~PCI_STATUS_CAP_LIST;
+
+    return status;
+}
+
 static void cf_check bar_write(
     const struct pci_dev *pdev, unsigned int reg, uint32_t val, void *data)
 {
@@ -775,6 +787,11 @@ static int cf_check init_bars(struct pci_dev *pdev)
     else
         rc = vpci_add_register(pdev->vpci, guest_cmd_read, cmd_write, PCI_COMMAND,
                                2, header);
+    if ( rc )
+        return rc;
+
+    rc = vpci_add_rw1c_register(pdev->vpci, status_read, vpci_hw_write16,
+                                PCI_STATUS, 2, header, 0xF900);
     if ( rc )
         return rc;
 

@@ -197,7 +197,9 @@ int vpci_assign_device(struct pci_dev *pdev)
             break;
     }
 
-out:
+#ifdef CONFIG_HAS_VPCI_GUEST_SUPPORT
+ out:
+#endif
     if ( rc )
         vpci_deassign_device(pdev);
 

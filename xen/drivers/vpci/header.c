@@ -332,8 +332,8 @@ static int modify_bars(const struct pci_dev *pdev, uint16_t cmd, bool rom_only)
         unsigned long end = PFN_DOWN(bar->addr + bar->size - 1);
         unsigned long start_guest = PFN_DOWN(is_hardware_domain(pdev->domain) ?
                                              bar->addr : bar->guest_addr);
-        unsigned long end_guest = PFN_DOWN(is_hardware_domain(pdev->domain) ?
-                                  bar->addr : bar->guest_addr + bar->size - 1);
+        unsigned long end_guest = PFN_DOWN((is_hardware_domain(pdev->domain) ?
+                                  bar->addr : bar->guest_addr) + bar->size - 1);
 
         if ( !bar->mem )
             continue;

@@ -351,8 +351,8 @@ void vpci_dump_msi(void)
             }
         }
         read_unlock(&d->pci_lock);
-    domain_done:
     }
+ domain_done:
     rcu_read_unlock(&domlist_read_lock);
 }
 

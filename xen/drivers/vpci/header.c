@@ -345,6 +345,15 @@ static int modify_bars(const struct pci_dev *pdev, uint16_t cmd, bool rom_only)
              bar->enabled == !!(cmd & PCI_COMMAND_MEMORY) )
             continue;
 
+#ifdef CONFIG_ARM
+        if ( !is_hardware_domain(pdev->domain) )
+        {
+            if ( (start_guest < PFN_DOWN(GUEST_VPCI_MEM_ADDR)) ||
+                 (end_guest >= PFN_DOWN(GUEST_VPCI_MEM_ADDR + GUEST_VPCI_MEM_SIZE)) )
+                continue;
+        }
+#endif
+
         if ( !pci_check_bar(pdev, _mfn(start), _mfn(end)) )
         {
             printk(XENLOG_G_WARNING

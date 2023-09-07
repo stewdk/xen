@@ -1823,6 +1823,14 @@ int p2m_init(struct domain *d)
     if ( rc )
         return rc;
 
+    /* GICv3 ITS translation register mapping */
+    /* (XEN) GICv3: Mapping ITS translation register to d1:addr=0x0000000008090000 size=0x0000000000010000 */
+    spin_lock(&d->arch.paging.lock);
+    rc = p2m_set_allocation(d, 16, NULL);
+    spin_unlock(&d->arch.paging.lock);
+    if ( rc )
+        return rc;
+
     return 0;
 }
 

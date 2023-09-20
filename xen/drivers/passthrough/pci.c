@@ -531,8 +531,6 @@ struct pci_dev *pci_get_pdev(const struct domain *d, pci_sbdf_t sbdf)
 {
     struct pci_dev *pdev;
 
-    ASSERT(d || pcidevs_locked());
-
     /*
      * The hardware domain owns the majority of the devices in the system.
      * When there are multiple segments, traversing the per-segment list is
@@ -549,12 +547,18 @@ struct pci_dev *pci_get_pdev(const struct domain *d, pci_sbdf_t sbdf)
         list_for_each_entry ( pdev, &pseg->alldevs_list, alldevs_list )
             if ( pdev->sbdf.bdf == sbdf.bdf &&
                  (!d || pdev->domain == d) )
+            {
+                ASSERT(d || pcidevs_locked() || rw_is_locked(&pdev->domain->pci_lock));
                 return pdev;
+            }
     }
     else
         list_for_each_entry ( pdev, &d->pdev_list, domain_list )
             if ( pdev->sbdf.sbdf == sbdf.sbdf )
+            {
+                ASSERT(d || pcidevs_locked() || rw_is_locked(&pdev->domain->pci_lock));
                 return pdev;
+            }
 
     return NULL;
 }

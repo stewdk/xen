@@ -570,6 +570,8 @@ int pt_irq_destroy_bind(
     struct pirq *pirq;
     const char *what = NULL;
 
+    ASSERT(pcidevs_locked() || rw_is_locked(&d->pci_lock));
+
     switch ( pt_irq_bind->irq_type )
     {
     case PT_IRQ_TYPE_PCI:

@@ -390,7 +390,7 @@ void vmx_pi_hooks_deassign(struct domain *d)
  * This function is used to update the IRTE for posted-interrupt
  * when guest changes MSI/MSI-X information.
  */
-static int cf_check vmx_pi_update_irte(const struct vcpu *v,
+static int cf_check vmx_pi_update_irte(struct domain * d, const struct vcpu *v,
                                        const struct pirq *pirq, uint8_t gvec)
 {
     const struct pi_desc *pi_desc = v ? &v->arch.hvm.vmx.pi_desc : NULL;
@@ -412,6 +412,8 @@ static int cf_check vmx_pi_update_irte(const struct vcpu *v,
     msi_desc->gvec = gvec;
 
     spin_unlock_irq(&desc->lock);
+
+    ASSERT(pcidevs_locked() || rw_is_locked(&d->pci_lock));
 
     return iommu_update_ire_from_msi(msi_desc, &msi_desc->msg);
 

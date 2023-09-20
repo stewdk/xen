@@ -204,8 +204,8 @@ struct hvm_function_table {
     void (*sync_pir_to_irr)(struct vcpu *v);
     bool (*test_pir)(const struct vcpu *v, uint8_t vector);
     void (*handle_eoi)(uint8_t vector, int isr);
-    int (*pi_update_irte)(const struct vcpu *v, const struct pirq *pirq,
-                          uint8_t gvec);
+    int (*pi_update_irte)(struct domain *d, const struct vcpu *v,
+                          const struct pirq *pirq, uint8_t gvec);
     void (*update_vlapic_mode)(struct vcpu *v);
 
     /*Walk nested p2m  */
@@ -770,10 +770,10 @@ static inline void hvm_set_nonreg_state(struct vcpu *v,
         alternative_vcall(hvm_funcs.set_nonreg_state, v, nrs);
 }
 
-static inline int hvm_pi_update_irte(const struct vcpu *v,
+static inline int hvm_pi_update_irte(struct domain *d, const struct vcpu *v,
                                      const struct pirq *pirq, uint8_t gvec)
 {
-    return alternative_call(hvm_funcs.pi_update_irte, v, pirq, gvec);
+    return alternative_call(hvm_funcs.pi_update_irte, d, v, pirq, gvec);
 }
 
 static inline void hvm_update_vlapic_mode(struct vcpu *v)

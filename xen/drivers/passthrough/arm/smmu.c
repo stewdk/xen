@@ -934,6 +934,12 @@ static int register_smmu_master(struct arm_smmu_device *smmu,
 					     fwspec);
 }
 
+/* Forward declaration */
+static int arm_smmu_assign_dev(struct domain *d, u8 devfn,
+			       struct device *dev, u32 flag);
+static int arm_smmu_deassign_dev(struct domain *d, u8 devfn,
+				 struct device *dev);
+
 /*
  * The driver which supports generic IOMMU DT bindings must have this
  * callback implemented.
@@ -958,6 +964,7 @@ static int arm_smmu_dt_add_device_generic(u8 devfn, struct device *dev)
 {
 	struct arm_smmu_device *smmu;
 	struct iommu_fwspec *fwspec;
+	int ret;
 
 #ifdef CONFIG_HAS_PCI
 	if ( dev_is_pci(dev) )
@@ -982,7 +989,19 @@ static int arm_smmu_dt_add_device_generic(u8 devfn, struct device *dev)
 	if (smmu == NULL)
 		return -ENXIO;
 
-	return arm_smmu_dt_add_device_legacy(smmu, dev, fwspec);
+	ret = arm_smmu_dt_add_device_legacy(smmu, dev, fwspec);
+	if ( ret )
+		return ret;
+
+#ifdef CONFIG_HAS_PCI
+	if ( dev_is_pci(dev) )
+	{
+		struct pci_dev *pdev = dev_to_pci(dev);
+		ret = arm_smmu_assign_dev(pdev->domain, devfn, dev, 0);
+	}
+#endif
+
+	return ret;
 }
 
 static int arm_smmu_dt_xlate_generic(struct device *dev,
@@ -2840,7 +2859,16 @@ static int arm_smmu_assign_dev(struct domain *d, u8 devfn,
 
 		/* dom_io is used as a sentinel for quarantined devices */
 		if ( d == dom_io )
-			return 0;
+		{
+			domain = dev_iommu_domain(dev);
+
+			if ( domain &&
+			     domain->priv->cfg.domain == hardware_domain )
+				ret = arm_smmu_deassign_dev(hardware_domain,
+							    devfn, dev);
+
+			return ret;
+		}
 	}
 #endif
 

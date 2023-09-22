@@ -1469,8 +1469,10 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
 }
 /* Forward declaration */
 static struct arm_smmu_device *arm_smmu_get_by_dev(const struct device *dev);
-static int arm_smmu_assign_dev(struct domain *d, u8 devfn,
-			struct device *dev, u32 flag);
+static int arm_smmu_assign_dev(struct domain *d, u8 devfn, struct device *dev,
+			       u32 flag);
+static int arm_smmu_deassign_dev(struct domain *d, uint8_t devfn,
+				 struct device *dev);
 
 static int arm_smmu_add_device(u8 devfn, struct device *dev)
 {
@@ -2668,7 +2670,15 @@ static int arm_smmu_assign_dev(struct domain *d, u8 devfn,
 
 		/* dom_io is used as a sentinel for quarantined devices */
 		if ( d == dom_io )
-			return 0;
+		{
+			io_domain = arm_smmu_get_domain(hardware_domain, dev);
+
+			if ( io_domain )
+				ret = arm_smmu_deassign_dev(hardware_domain,
+							    devfn, dev);
+
+			return ret;
+		}
 	}
 #endif
 

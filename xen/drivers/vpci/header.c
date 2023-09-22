@@ -221,7 +221,7 @@ bool vpci_process_pending(struct vcpu *v)
             if ( is_hardware_domain(v->domain) )
             {
                 write_lock(&v->domain->pci_lock);
-                vpci_deassign_device(v->vpci.pdev);
+                vpci_deassign_device(pdev);
                 write_unlock(&v->domain->pci_lock);
             }
             else

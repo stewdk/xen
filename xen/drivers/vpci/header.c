@@ -185,6 +185,13 @@ bool vpci_process_pending(struct vcpu *v)
 
     read_lock(&v->domain->pci_lock);
     header = &pdev->vpci->header;
+
+    if ( v->domain != pdev->domain )
+    {
+        read_unlock(&v->domain->pci_lock);
+        return false;
+    }
+
     for ( i = 0; i < ARRAY_SIZE(header->bars); i++ )
     {
         struct vpci_bar *bar = &header->bars[i];

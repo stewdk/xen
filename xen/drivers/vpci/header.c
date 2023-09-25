@@ -180,7 +180,7 @@ bool vpci_process_pending(struct vcpu *v)
     struct vpci_header *header = NULL;
     unsigned int i;
 
-    if ( !pdev )
+    if ( !pdev || !pdev->vpci )
         return false;
 
     read_lock(&v->domain->pci_lock);

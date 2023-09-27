@@ -790,7 +790,12 @@ static int cf_check init_bars(struct pci_dev *pdev)
 
     /* Disable memory decoding before sizing. */
     if ( cmd & PCI_COMMAND_MEMORY )
+    {
+        if ( !is_hwdom )
+            cmd &= ~PCI_COMMAND_MEMORY;
+
         pci_conf_write16(pdev->sbdf, PCI_COMMAND, cmd & ~PCI_COMMAND_MEMORY);
+    }
 
     header->guest_cmd = cmd & ~PCI_COMMAND_MEMORY;
 

@@ -3983,6 +3983,9 @@ void __init create_domUs(void)
 #endif
         }
 
+        if ( is_pci_scan_enabled() )
+            d_cfg.arch.pci_flags = XEN_DOMCTL_CONFIG_PCI_VPCI;
+
         /*
          * The variable max_init_domid is initialized with zero, so here it's
          * very important to use the pre-increment operator to call

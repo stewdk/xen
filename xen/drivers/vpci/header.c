@@ -623,12 +623,16 @@ static void cf_check guest_bar_write(const struct pci_dev *pdev,
     guest_addr &= ~(0xffffffffULL << (hi ? 32 : 0));
     guest_addr |= (uint64_t)val << (hi ? 32 : 0);
 
+    /* Allow guest to size BAR correctly */
+    guest_addr &= ~(bar->size - 1);
+
     /*
      * Make sure that the guest set address has the same page offset
      * as the physical address on the host or otherwise things won't work as
      * expected.
      */
-    if ( PAGE_OFFSET(guest_addr) != PAGE_OFFSET(bar->addr) )
+    if ( guest_addr != ~(bar->size -1 )  &&
+         PAGE_OFFSET(guest_addr) != PAGE_OFFSET(bar->addr) )
     {
         gprintk(XENLOG_WARNING,
                 "%pp: ignored BAR %zu write attempting to change page offset\n",

@@ -850,6 +850,7 @@ static int cf_check init_bars(struct pci_dev *pdev)
         }
 
         bars[i].addr = addr;
+        bars[i].guest_addr = addr;
         bars[i].size = size;
         bars[i].prefetchable = val & PCI_BASE_ADDRESS_MEM_PREFETCH;
 
@@ -872,6 +873,7 @@ static int cf_check init_bars(struct pci_dev *pdev)
             rom->type = VPCI_BAR_ROM;
             rom->size = size;
             rom->addr = addr;
+            rom->guest_addr = addr;
             header->rom_enabled = pci_conf_read32(pdev->sbdf, rom_reg) &
                                   PCI_ROM_ADDRESS_ENABLE;
 

@@ -301,14 +301,18 @@ static uint32_t its_get_host_devid(struct domain *d, uint32_t guest_devid)
 
     if ( !is_hardware_domain(d) )
     {
-        pci_sbdf_t sbdf = (pci_sbdf_t)guest_devid;
+        pci_sbdf_t __maybe_unused sbdf = {
+            .sbdf = guest_devid,
+        };
         const struct pci_dev *pdev;
 
         pcidevs_lock();
         for_each_pdev( d, pdev )
         {
             /* Replace virtual SBDF with the physical one. */
+#ifdef CONFIG_HAS_VPCI_GUEST_SUPPORT
             if ( pdev->vpci->guest_sbdf.sbdf == sbdf.sbdf )
+#endif
             {
                 host_devid = dt_msi_map_id(pdev->sbdf.sbdf);
             }
@@ -324,12 +328,16 @@ paddr_t its_get_host_doorbell(struct virt_its *its, uint32_t guest_devid)
     const struct pci_host_bridge *bridge;
     const struct pci_dev *pdev;
     uint32_t host_devid = guest_devid;
-    pci_sbdf_t sbdf = (pci_sbdf_t)guest_devid;
+    pci_sbdf_t __maybe_unused sbdf = {
+        .sbdf = guest_devid,
+    };
 
     pcidevs_lock();
     for_each_pdev( its->d, pdev )
     {
+#ifdef CONFIG_HAS_VPCI_GUEST_SUPPORT
         if ( pdev->vpci->guest_sbdf.sbdf == sbdf.sbdf )
+#endif
         {
             /* Replace virtual SBDF with the physical one. */
             host_devid = pdev->sbdf.sbdf;

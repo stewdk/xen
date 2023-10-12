@@ -448,8 +448,7 @@ struct rangeset *rangeset_new(
     return r;
 }
 
-void rangeset_destroy(
-    struct rangeset *r)
+void rangeset_empty(struct rangeset *r)
 {
     struct range *x;
 
@@ -465,6 +464,12 @@ void rangeset_destroy(
 
     while ( (x = first_range(r)) != NULL )
         destroy_range(r, x);
+}
+
+void rangeset_destroy(
+    struct rangeset *r)
+{
+    rangeset_empty(r);
 
     xfree(r);
 }

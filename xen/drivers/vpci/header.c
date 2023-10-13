@@ -607,7 +607,7 @@ static void cf_check guest_bar_write(const struct pci_dev *pdev,
 {
     struct vpci_bar *bar = data;
     bool hi = false;
-    uint64_t guest_addr = bar->guest_addr;
+    uint64_t guest_addr;
 
     if ( bar->type == VPCI_BAR_MEM64_HI )
     {
@@ -620,6 +620,7 @@ static void cf_check guest_bar_write(const struct pci_dev *pdev,
         val &= PCI_BASE_ADDRESS_MEM_MASK;
     }
 
+    guest_addr = bar->guest_addr;
     guest_addr &= ~(0xffffffffULL << (hi ? 32 : 0));
     guest_addr |= (uint64_t)val << (hi ? 32 : 0);
 

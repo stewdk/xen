@@ -455,13 +455,6 @@ void rangeset_empty(struct rangeset *r)
     if ( r == NULL )
         return;
 
-    if ( r->domain != NULL )
-    {
-        spin_lock(&r->domain->rangesets_lock);
-        list_del(&r->rangeset_list);
-        spin_unlock(&r->domain->rangesets_lock);
-    }
-
     while ( (x = first_range(r)) != NULL )
         destroy_range(r, x);
 }
@@ -469,6 +462,16 @@ void rangeset_empty(struct rangeset *r)
 void rangeset_destroy(
     struct rangeset *r)
 {
+    if ( r == NULL )
+        return;
+
+    if ( r->domain != NULL )
+    {
+        spin_lock(&r->domain->rangesets_lock);
+        list_del(&r->rangeset_list);
+        spin_unlock(&r->domain->rangesets_lock);
+    }
+
     rangeset_empty(r);
 
     xfree(r);

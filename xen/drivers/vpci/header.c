@@ -516,7 +516,7 @@ static void cf_check cmd_write(
         header->guest_cmd = cmd;
 
         if ( (vpci->msi && vpci->msi->enabled) ||
-             (vpci->msix && vpci->msi->enabled) )
+             (vpci->msix && vpci->msix->enabled) )
             excluded |= PCI_COMMAND_INTX_DISABLE;
 
         cmd &= ~excluded;

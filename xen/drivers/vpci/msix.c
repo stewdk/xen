@@ -345,10 +345,6 @@ bool cf_check vpci_msix_read(struct vpci_msix *msix, unsigned long addr,
 
     read_lock(&d->pci_lock);
 
-#if 0
-    /* TODO: caller must lock appropriately */
-    msix = msix_find(d, addr);
-#endif
     if ( !msix )
     {
         read_unlock(&d->pci_lock);
@@ -493,10 +489,6 @@ bool cf_check vpci_msix_write(struct vpci_msix *msix, unsigned long addr,
 
     read_lock(&d->pci_lock);
 
-#if 0
-    /* TODO: caller must lock appropriately */
-    msix = msix_find(d, addr);
-#endif
     if ( !msix )
     {
         read_unlock(&d->pci_lock);

@@ -1029,8 +1029,12 @@ static int cf_check x86_msix_accept(struct vcpu *v, unsigned long addr)
 static int cf_check x86_msix_write(struct vcpu *v, unsigned long addr,
     unsigned int len, unsigned long data)
 {
-    const struct domain *d = v->domain;
-    struct vpci_msix *msix = vpci_msix_find(d, addr);
+    struct domain *d = v->domain;
+    struct vpci_msix *msix;
+
+    read_lock(&d->pci_lock);
+    msix = vpci_msix_find(d, addr);
+    read_unlock(&d->pci_lock);
 
     if( !vpci_msix_write(msix, addr, len, data) )
         return X86EMUL_RETRY;
@@ -1041,8 +1045,12 @@ static int cf_check x86_msix_write(struct vcpu *v, unsigned long addr,
 static int cf_check x86_msix_read(struct vcpu *v, unsigned long addr,
     unsigned int len, unsigned long *data)
 {
-    const struct domain *d = v->domain;
-    struct vpci_msix *msix = vpci_msix_find(d, addr);
+    struct domain *d = v->domain;
+    struct vpci_msix *msix;
+
+    read_lock(&d->pci_lock);
+    msix = vpci_msix_find(d, addr);
+    read_unlock(&d->pci_lock);
 
     if ( !vpci_msix_read(msix, addr, len, data) )
         return X86EMUL_RETRY;

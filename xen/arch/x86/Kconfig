@@ -28,6 +28,7 @@ config X86
 	select HAS_SCHED_GRANULARITY
 	select HAS_UBSAN
 	select HAS_VPCI if HVM
+	select HAS_VPCI_GUEST_SUPPORT if HVM
 	select NEEDS_LIBELF
 
 config ARCH_DEFCONFIG

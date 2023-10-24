@@ -262,7 +262,7 @@ static int cf_check vpci_portio_read(
     const struct hvm_io_handler *handler, uint64_t addr, uint32_t size,
     uint64_t *data)
 {
-    const struct domain *d = current->domain;
+    struct domain *d = current->domain;
     unsigned int reg;
     pci_sbdf_t sbdf;
     uint32_t cf8;
@@ -282,6 +282,21 @@ static int cf_check vpci_portio_read(
         return X86EMUL_UNHANDLEABLE;
 
     reg = hvm_pci_decode_addr(cf8, addr, &sbdf);
+
+    if ( !is_hardware_domain(d) )
+    {
+        bool translated;
+        pci_sbdf_t new_sbdf = {
+            .sbdf = sbdf.sbdf,
+        };
+        read_lock(&d->pci_lock);
+        translated = vpci_translate_virtual_device(d, &new_sbdf);
+        read_unlock(&d->pci_lock);
+        if ( translated )
+            sbdf.sbdf = new_sbdf.sbdf;
+        else
+            return X86EMUL_OKAY;
+    }
 
     if ( !vpci_access_allowed(reg, size) )
         return X86EMUL_OKAY;
@@ -313,6 +328,21 @@ static int cf_check vpci_portio_write(
         return X86EMUL_UNHANDLEABLE;
 
     reg = hvm_pci_decode_addr(cf8, addr, &sbdf);
+
+    if ( !is_hardware_domain(d) )
+    {
+        bool translated;
+        pci_sbdf_t new_sbdf = {
+            .sbdf = sbdf.sbdf,
+        };
+        read_lock(&d->pci_lock);
+        translated = vpci_translate_virtual_device(d, &new_sbdf);
+        read_unlock(&d->pci_lock);
+        if ( translated )
+            sbdf.sbdf = new_sbdf.sbdf;
+        else
+            return X86EMUL_OKAY;
+    }
 
     if ( !vpci_access_allowed(reg, size) )
         return X86EMUL_OKAY;

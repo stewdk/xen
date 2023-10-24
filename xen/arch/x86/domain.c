@@ -727,7 +727,7 @@ static bool emulation_flags_ok(const struct domain *d, unsigned int emflags,
               emflags != (X86_EMU_LAPIC | X86_EMU_IOAPIC)) )
             return false;
         if ( !is_hardware_domain(d) &&
-             ((cdf & XEN_DOMCTL_CDF_vpci) ||
+             (
               (emflags != X86_EMU_ALL &&
                emflags != X86_EMU_LAPIC)) )
             return false;

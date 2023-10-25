@@ -32,7 +32,7 @@
  *
  * Last version bump: Xen 4.19
  */
-#define XEN_DOMCTL_INTERFACE_VERSION 0x00000017
+#define XEN_DOMCTL_INTERFACE_VERSION 0x00000018
 
 /*
  * NB. xen_domctl.domain is an IN/OUT parameter for this operation.
@@ -68,9 +68,11 @@ struct xen_domctl_createdomain {
 #define XEN_DOMCTL_CDF_vpmu           (1U << 7)
 /* Should we trap guest accesses to unmapped addresses? */
 #define XEN_DOMCTL_CDF_trap_unmapped_accesses  (1U << 8)
+/* Should vPCI be enabled for the guest? */
+#define XEN_DOMCTL_CDF_vpci           (1U << 9)
 
 /* Max XEN_DOMCTL_CDF_* constant.  Used for ABI checking. */
-#define XEN_DOMCTL_CDF_MAX XEN_DOMCTL_CDF_trap_unmapped_accesses
+#define XEN_DOMCTL_CDF_MAX XEN_DOMCTL_CDF_vpci
 
     uint32_t flags;
 

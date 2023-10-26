@@ -843,6 +843,35 @@ int pci_remove_device(u16 seg, u8 bus, u8 devfn)
     return ret;
 }
 
+int pci_reset_device_state(u16 seg, u8 bus, u8 devfn)
+{
+    struct pci_dev *pdev;
+    int ret;
+    pci_sbdf_t sbdf = PCI_SBDF(seg, bus, devfn);
+
+    pcidevs_lock();
+
+    pdev = pci_get_pdev(NULL, sbdf);
+    if ( !pdev )
+    {
+        ret = -ENODEV;
+        goto out;
+    }
+
+    write_lock(&pdev->domain->pci_lock);
+
+    ret = vpci_reset_device_state(pdev);
+
+    write_unlock(&pdev->domain->pci_lock);
+ out:
+    pcidevs_unlock();
+
+    if (ret)
+        printk(XENLOG_ERR "PCI reset device %pp state failed\n", &sbdf);
+
+    return ret;
+}
+
 /* Caller should hold the pcidevs_lock */
 static int deassign_device(struct domain *d, uint16_t seg, uint8_t bus,
                            uint8_t devfn)

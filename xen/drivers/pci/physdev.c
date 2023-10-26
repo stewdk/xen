@@ -68,6 +68,22 @@ ret_t pci_physdev_op(int cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
         break;
     }
 
+    case PHYSDEVOP_pci_device_state_reset: {
+        struct physdev_pci_device dev;
+
+#ifdef CONFIG_ARM
+        if ( !is_pci_passthrough_enabled() )
+            return -EOPNOTSUPP;
+#endif
+
+        ret = -EFAULT;
+        if ( copy_from_guest(&dev, arg, 1) != 0 )
+            break;
+
+        ret = pci_reset_device_state(dev.seg, dev.bus, dev.devfn);
+        break;
+    }
+
     default:
         ret = -ENOSYS;
         break;

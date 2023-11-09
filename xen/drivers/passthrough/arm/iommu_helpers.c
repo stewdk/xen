@@ -44,7 +44,6 @@ int __must_check arm_iommu_map_page(struct domain *d, dfn_t dfn, mfn_t mfn,
      * This is only valid when the domain is directed mapped. Hence this
      * function should only be used by gnttab code with gfn == mfn == dfn.
      */
-    BUG_ON(!is_domain_direct_mapped(d));
     BUG_ON(mfn_x(mfn) != dfn_x(dfn));
 
     /* We only support readable and writable flags */

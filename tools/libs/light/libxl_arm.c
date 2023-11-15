@@ -298,6 +298,7 @@ int libxl__arch_domain_prepare_config(libxl__gc *gc,
             num_virtio_pci_hosts, sizeof(*d_config->b_info.virtio_pci_hosts));
         memcpy(d_config->b_info.virtio_pci_hosts, virtio_pci_hosts,
             sizeof(*d_config->b_info.virtio_pci_hosts) * num_virtio_pci_hosts);
+        config->flags |= XEN_DOMCTL_CDF_vpci;
     }
 
     LOG(DEBUG, "Configure the domain");

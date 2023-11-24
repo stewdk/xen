@@ -85,6 +85,20 @@ long osdep_hypercall(xencall_handle *xcall, privcmd_hypercall_t *hypercall)
     return ioctl(xcall->fd, IOCTL_PRIVCMD_HYPERCALL, hypercall);
 }
 
+long osdep_oscall(xencall_handle *xcall, int irq)
+{
+    privcmd_gsi_from_irq_t gsi_irq = {
+        .irq = irq,
+        .gsi = -1,
+    };
+
+    if (ioctl(xcall->fd, IOCTL_PRIVCMD_GSI_FROM_IRQ, &gsi_irq)) {
+        return gsi_irq.irq;
+    }
+
+    return gsi_irq.gsi;
+}
+
 static void *alloc_pages_bufdev(xencall_handle *xcall, size_t npages)
 {
     void *p;

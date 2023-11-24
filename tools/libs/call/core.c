@@ -173,6 +173,11 @@ int xencall5(xencall_handle *xcall, unsigned int op,
     return osdep_hypercall(xcall, &call);
 }
 
+int xen_oscall_gsi_from_irq(xencall_handle *xcall, int irq)
+{
+    return osdep_oscall(xcall, irq);
+}
+
 /*
  * Local variables:
  * mode: C

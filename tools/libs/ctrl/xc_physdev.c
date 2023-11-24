@@ -111,3 +111,7 @@ int xc_physdev_unmap_pirq(xc_interface *xch,
     return rc;
 }
 
+int xc_physdev_gsi_from_irq(xc_interface *xch, int irq)
+{
+    return xen_oscall_gsi_from_irq(xch->xcall, irq);
+}

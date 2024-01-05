@@ -653,12 +653,20 @@ long do_domctl(XEN_GUEST_HANDLE_PARAM(xen_domctl_t) u_domctl)
         unsigned int pirq = op->u.irq_permission.pirq, irq;
         int allow = op->u.irq_permission.allow_access;
 
-        if ( pirq >= current->domain->nr_pirqs )
+        if ( pirq >= nr_irqs_gsi )
         {
             ret = -EINVAL;
             break;
         }
-        irq = pirq_access_permitted(current->domain, pirq);
+
+        if ( irq_access_permitted(current->domain, pirq) )
+            irq = pirq;
+        else
+        {
+            ret = -EPERM;
+            break;
+        }
+
         if ( !irq || xsm_irq_permission(XSM_HOOK, d, irq, allow) )
             ret = -EPERM;
         else if ( allow )

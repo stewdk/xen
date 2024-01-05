@@ -654,12 +654,15 @@ out:
 int libxl__arch_domain_map_irq(libxl__gc *gc, uint32_t domid, int irq)
 {
     int ret;
+    int gsi;
+
+    gsi = irq;
 
     ret = xc_physdev_map_pirq(CTX->xch, domid, irq, &irq);
     if (ret)
         return ret;
 
-    ret = xc_domain_irq_permission(CTX->xch, domid, irq, 1);
+    ret = xc_domain_irq_permission(CTX->xch, domid, gsi, 1);
 
     return ret;
 }

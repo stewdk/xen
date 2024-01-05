@@ -97,6 +97,12 @@ long hvm_physdev_op(int cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
         break;
     }
 
+    case PHYSDEVOP_setup_gsi:
+        if ( is_hardware_domain(currd) && !has_pirq(currd) )
+            break;
+        else
+            return -ENOSYS;
+
     case PHYSDEVOP_eoi:
     case PHYSDEVOP_irq_status_query:
     case PHYSDEVOP_get_free_pirq:

@@ -10,6 +10,7 @@
 #include <xen/hypercall.h>
 #include <xen/ioreq.h>
 #include <xen/nospec.h>
+#include <xen/guest_access.h>
 
 #include <asm/hvm/emulate.h>
 #include <asm/hvm/support.h>
@@ -72,8 +73,30 @@ long hvm_physdev_op(int cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
 
     switch ( cmd )
     {
-    case PHYSDEVOP_map_pirq:
-    case PHYSDEVOP_unmap_pirq:
+    case PHYSDEVOP_map_pirq: {
+        physdev_map_pirq_t map;
+
+        if ( copy_from_guest(&map, arg, 1) != 0 )
+            return -EFAULT;
+
+        if ( !has_pirq(currd) && map.domid == DOMID_SELF )
+            return -ENOSYS;
+
+        break;
+    }
+
+    case PHYSDEVOP_unmap_pirq: {
+        physdev_unmap_pirq_t unmap;
+
+        if ( copy_from_guest(&unmap, arg, 1) != 0 )
+            return -EFAULT;
+
+        if ( !has_pirq(currd) && unmap.domid == DOMID_SELF )
+            return -ENOSYS;
+
+        break;
+    }
+
     case PHYSDEVOP_eoi:
     case PHYSDEVOP_irq_status_query:
     case PHYSDEVOP_get_free_pirq:

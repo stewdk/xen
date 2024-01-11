@@ -113,6 +113,8 @@ static int __init pci_init(void)
 
         add_discovered_pci_devices();
 
+        pci_fixup_bars();
+
 #ifdef CONFIG_PCI_DEVICE_DEBUG
         dump_pci_devices('c');
 #endif

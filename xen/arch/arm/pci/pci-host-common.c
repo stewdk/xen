@@ -465,6 +465,34 @@ bool pci_check_bar(const struct pci_dev *pdev, mfn_t start, mfn_t end)
 
     return bar_data.is_valid;
 }
+
+uint64_t pci_get_new_bar_addr(const struct pci_dev *pdev, uint64_t size)
+{
+    struct pci_host_bridge *bridge;
+    uint64_t addr;
+
+    bridge = pci_find_host_bridge(pdev->seg, pdev->bus);
+    if ( !bridge )
+        return 0;
+
+    if ( !rangeset_claim_range(bridge->bar_ranges, size, &addr) )
+        return addr;
+
+    return 0;
+}
+
+int pci_reserve_bar_range(const struct pci_dev *pdev, uint64_t addr,
+                          uint64_t size)
+{
+    struct pci_host_bridge *bridge;
+
+    bridge = pci_find_host_bridge(pdev->seg, pdev->bus);
+    if ( !bridge )
+        return 0;
+
+    return rangeset_add_range(bridge->bar_ranges, addr, addr + size - 1);
+}
+
 /*
  * Local variables:
  * mode: C

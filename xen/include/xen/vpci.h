@@ -37,6 +37,7 @@ int __must_check vpci_assign_device(struct pci_dev *pdev);
 
 /* Remove all handlers and free vpci related structures. */
 void vpci_deassign_device(struct pci_dev *pdev);
+int __must_check vpci_reset_device_state(struct pci_dev *pdev);
 
 /* Add/remove a register handler. */
 int __must_check vpci_add_register_mask(struct vpci *vpci,
@@ -299,6 +300,11 @@ static inline int vpci_assign_device(struct pci_dev *pdev)
 }
 
 static inline void vpci_deassign_device(struct pci_dev *pdev) { }
+
+static inline int __must_check vpci_reset_device_state(struct pci_dev *pdev)
+{
+    return 0;
+}
 
 static inline void vpci_dump_msi(void) { }
 

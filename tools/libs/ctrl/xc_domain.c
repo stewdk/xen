@@ -1394,6 +1394,21 @@ int xc_domain_irq_permission(xc_interface *xch,
     return do_domctl(xch, &domctl);
 }
 
+int xc_domain_gsi_permission(xc_interface *xch,
+                             uint32_t domid,
+                             uint32_t gsi,
+                             bool allow_access)
+{
+    struct xen_domctl domctl = {};
+
+    domctl.cmd = XEN_DOMCTL_gsi_permission;
+    domctl.domain = domid;
+    domctl.u.gsi_permission.gsi = gsi;
+    domctl.u.gsi_permission.allow_access = allow_access;
+
+    return do_domctl(xch, &domctl);
+}
+
 int xc_domain_iomem_permission(xc_interface *xch,
                                uint32_t domid,
                                unsigned long first_mfn,

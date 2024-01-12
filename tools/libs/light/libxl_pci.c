@@ -1421,6 +1421,8 @@ static void pci_add_dm_done(libxl__egc *egc,
     uint32_t flag = XEN_DOMCTL_DEV_RDM_RELAXED;
     uint32_t domainid = domid;
     bool isstubdom = libxl_is_stubdom(ctx, domid, &domainid);
+    int gsi;
+    bool has_gsi = true;
 
     /* Convenience aliases */
     bool starting = pas->starting;
@@ -1482,6 +1484,7 @@ static void pci_add_dm_done(libxl__egc *egc,
                                 pci->bus, pci->dev, pci->func);
 
     if ( access(sysfs_path, F_OK) != 0 ) {
+        has_gsi = false;
         if ( errno == ENOENT )
             sysfs_path = GCSPRINTF(SYSFS_PCI_DEV"/"PCI_BDF"/irq", pci->domain,
                                 pci->bus, pci->dev, pci->func);
@@ -1497,6 +1500,7 @@ static void pci_add_dm_done(libxl__egc *egc,
         goto out_no_irq;
     }
     if ((fscanf(f, "%u", &irq) == 1) && irq) {
+        gsi = irq;
         r = xc_physdev_map_pirq(ctx->xch, domid, irq, &irq);
         if (r < 0) {
             LOGED(ERROR, domainid, "xc_physdev_map_pirq irq=%d (error=%d)",
@@ -1505,7 +1509,10 @@ static void pci_add_dm_done(libxl__egc *egc,
             rc = ERROR_FAIL;
             goto out;
         }
-        r = xc_domain_irq_permission(ctx->xch, domid, irq, 1);
+        if ( has_gsi )
+            r = xc_domain_gsi_permission(ctx->xch, domid, gsi, 1);
+        if ( !has_gsi || r == -EOPNOTSUPP )
+            r = xc_domain_irq_permission(ctx->xch, domid, irq, 1);
         if (r < 0) {
             LOGED(ERROR, domainid,
                   "xc_domain_irq_permission irq=%d (error=%d)", irq, r);
@@ -2185,6 +2192,7 @@ static void pci_remove_detached(libxl__egc *egc,
     FILE *f;
     uint32_t domainid = prs->domid;
     bool isstubdom;
+    bool has_gsi = true;
 
     /* Convenience aliases */
     libxl_device_pci *const pci = &prs->pci;
@@ -2244,6 +2252,7 @@ skip_bar:
                            pci->bus, pci->dev, pci->func);
 
     if ( access(sysfs_path, F_OK) != 0 ) {
+        has_gsi = false;
         if ( errno == ENOENT )
             sysfs_path = GCSPRINTF(SYSFS_PCI_DEV"/"PCI_BDF"/irq", pci->domain,
                                 pci->bus, pci->dev, pci->func);
@@ -2270,7 +2279,10 @@ skip_bar:
              */
             LOGED(ERROR, domid, "xc_physdev_unmap_pirq irq=%d", irq);
         }
-        rc = xc_domain_irq_permission(ctx->xch, domid, irq, 0);
+        if ( has_gsi )
+            rc = xc_domain_gsi_permission(ctx->xch, domid, irq, 0);
+        if ( !has_gsi || rc == -EOPNOTSUPP )
+            rc = xc_domain_irq_permission(ctx->xch, domid, irq, 0);
         if (rc < 0) {
             LOGED(ERROR, domid, "xc_domain_irq_permission irq=%d", irq);
         }

@@ -63,7 +63,7 @@ static int cf_check map_range(
         {
             printk(XENLOG_G_WARNING
                    "%pd denied access to MMIO range [%#lx, %#lx]\n",
-                   map->d, s, e);
+                   map->d, map_mfn, m_end);
             return -EPERM;
         }
 

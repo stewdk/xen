@@ -181,6 +181,14 @@ static int pci_set_msi_base(struct pci_host_bridge *bridge)
     const __be32 *map = NULL;
     uint64_t addr;
 
+    if ( dt_device_is_compatible(bridge->dt_node, "xlnx,nwl-pcie-2.11") )
+    {
+        printk("%s:%d:%s xlnx,nwl-pcie-2.11, set its_msi_base = 0\n",
+               __FILE__, __LINE__, __func__);
+        bridge->its_msi_base = 0;
+        return 0;
+    }
+
     map = dt_get_property(bridge->dt_node, "msi-map", NULL);
     if ( !map )
         return -ENODEV;

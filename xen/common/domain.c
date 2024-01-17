@@ -712,12 +712,6 @@ struct domain *domain_create(domid_t domid,
         d->nr_pirqs = min(d->nr_pirqs, nr_irqs);
 
         radix_tree_init(&d->pirq_tree);
-
-        err = -ENOMEM;
-        d->iomem_caps = rangeset_new(d, "I/O Memory", RANGESETF_prettyprint_hex);
-        d->irq_caps   = rangeset_new(d, "Interrupts", 0);
-        if ( !d->iomem_caps || !d->irq_caps )
-            goto fail;
     }
 
     if ( (err = arch_domain_create(d, config, flags)) != 0 )
@@ -735,6 +729,12 @@ struct domain *domain_create(domid_t domid,
 
         watchdog_domain_init(d);
         init_status |= INIT_watchdog;
+
+        err = -ENOMEM;
+        d->iomem_caps = rangeset_new(d, "I/O Memory", RANGESETF_prettyprint_hex);
+        d->irq_caps   = rangeset_new(d, "Interrupts", 0);
+        if ( !d->iomem_caps || !d->irq_caps )
+            goto fail;
 
         if ( (err = xsm_domain_create(XSM_HOOK, d, config->ssidref)) != 0 )
             goto fail;

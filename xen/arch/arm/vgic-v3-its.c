@@ -1601,7 +1601,8 @@ static int vgic_v3_its_init_virtual(struct domain *d, paddr_t guest_addr,
                     return ret;
                 }
 
-                break; /* At the moment we only support a single hardware ITS */
+                /* XXX: At the moment we only support a single hardware ITS */
+                break;
             }
         }
     }

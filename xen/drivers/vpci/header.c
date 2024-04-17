@@ -566,7 +566,7 @@ static void cf_check bar_write(
     struct vpci_bar *bar = data;
     bool hi = false;
 
-    ASSERT(is_hardware_domain(pdev->domain));
+    ASSERT(!has_vpci_bridge(pdev->domain));
 
     if ( bar->type == VPCI_BAR_MEM64_HI )
     {

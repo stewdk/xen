@@ -42,7 +42,7 @@ static int __init make_gicv2_domU_node(struct kernel_info *kinfo)
     if ( res )
         return res;
 
-    res = fdt_property_cell(fdt, "#address-cells", 0);
+    res = fdt_property_cell(fdt, "#address-cells", GUEST_ROOT_ADDRESS_CELLS);
     if ( res )
         return res;
 
@@ -96,6 +96,18 @@ static int __init make_gicv3_domU_node(struct kernel_info *kinfo)
     if ( res )
         return res;
 
+    res = fdt_property_cell(fdt, "#address-cells", GUEST_ROOT_ADDRESS_CELLS);
+    if ( res )
+        return res;
+
+    res = fdt_property_cell(fdt, "#size-cells", GUEST_ROOT_SIZE_CELLS);
+    if ( res )
+        return res;
+
+    res = fdt_property(fdt, "ranges", NULL, 0);
+    if ( res )
+        return res;
+
     res = fdt_property_cell(fdt, "#interrupt-cells", 3);
     if ( res )
         return res;
@@ -145,11 +157,11 @@ static int __init make_gicv3_domU_node(struct kernel_info *kinfo)
 
     /* Add ITS node only if domain will use vpci */
     if ( is_pci_scan_enabled() )
+    {
         res = gicv3_its_make_emulated_dt_node(d, fdt);
-    else
-        res = fdt_property_cell(fdt, "#address-cells", 0);
-    if ( res )
-        return res;
+        if ( res )
+            return res;
+    }
 
     res = fdt_end_node(fdt);
 

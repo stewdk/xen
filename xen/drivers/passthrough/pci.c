@@ -1129,7 +1129,7 @@ static int __init cf_check _scan_pci_devices(struct pci_seg *pseg, void *arg)
     struct pci_dev *pdev;
     int bus, dev, func;
 
-    for ( bus = 0; bus < 256; bus++ )
+    for ( bus = 0; bus < 4; bus++ )
     {
         for ( dev = 0; dev < 32; dev++ )
         {

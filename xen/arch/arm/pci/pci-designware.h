@@ -274,12 +274,17 @@
 #define DMA_LLP_MEM_SIZE                PAGE_SIZE
 
 struct dw_pcie_priv {
-    uint32_t num_viewport;
-    bool iatu_unroll_initilized;
-    bool iatu_unroll_enabled;
+    void __iomem *dbi_base;
+    size_t        dbi_size;
     void __iomem *atu_base;
+    size_t        atu_size;
+    uint32_t      num_ob_windows;
+    uint32_t      region_align;
+    uint64_t      region_limit;
     unsigned int version;
     void *priv;
+    unsigned long caps;
+    unsigned int  ranges;
 };
 
 void *dw_pcie_get_priv(struct pci_host_bridge *bridge);

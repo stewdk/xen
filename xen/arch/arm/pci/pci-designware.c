@@ -8,6 +8,8 @@
  */
 
 #include <xen/delay.h>
+#include <xen/pci_ids.h>
+#include <xen/sizes.h>
 #include <asm/io.h>
 
 #include "pci-designware.h"
@@ -112,18 +114,10 @@ static void dw_pcie_writel_dbi(struct pci_host_bridge *pci, uint32_t reg,
     dw_pcie_write_dbi(pci, reg, sizeof(uint32_t), val);
 }
 
-static void dw_pcie_read_iatu_unroll_enabled(struct pci_host_bridge *bridge)
+static void dw_pcie_writew_dbi(struct pci_host_bridge *pci, uint32_t reg,
+                               uint16_t val)
 {
-    struct dw_pcie_priv *priv = bridge->priv;
-    uint32_t val;
-
-    val = dw_pcie_readl_dbi(bridge, PCIE_ATU_VIEWPORT);
-    if ( val == 0xffffffffU )
-        priv->iatu_unroll_enabled = true;
-
-    printk(XENLOG_G_DEBUG "%s iATU unroll: %sabled\n",
-           dt_node_full_name(bridge->dt_node),
-           priv->iatu_unroll_enabled ? "en" : "dis");
+    dw_pcie_write_dbi(pci, reg, sizeof(uint16_t), val);
 }
 
 static uint32_t dw_pcie_readl_atu(struct pci_host_bridge *pci, uint32_t reg)
@@ -217,7 +211,7 @@ static int __dw_pcie_prog_outbound_atu(struct pci_host_bridge *pci,
     struct dw_pcie_priv *priv = pci->priv;
     uint32_t retries, val;
 
-    if ( priv->iatu_unroll_enabled )
+    if ( dw_pcie_cap_is(priv, IATU_UNROLL) )
         return dw_pcie_prog_outbound_atu_unroll(pci, func_no, index, type,
                                                 cpu_addr, pci_addr, size);
 
@@ -226,13 +220,13 @@ static int __dw_pcie_prog_outbound_atu(struct pci_host_bridge *pci,
     dw_pcie_writel_dbi(pci, PCIE_ATU_LOWER_BASE, lower_32_bits(cpu_addr));
     dw_pcie_writel_dbi(pci, PCIE_ATU_UPPER_BASE, upper_32_bits(cpu_addr));
     dw_pcie_writel_dbi(pci, PCIE_ATU_LIMIT, lower_32_bits(cpu_addr + size - 1));
-    if ( priv->version >= 0x460A )
+    if ( dw_pcie_ver_is_ge(priv, 460A) )
         dw_pcie_writel_dbi(pci, PCIE_ATU_UPPER_LIMIT,
                            upper_32_bits(cpu_addr + size - 1));
     dw_pcie_writel_dbi(pci, PCIE_ATU_LOWER_TARGET, lower_32_bits(pci_addr));
     dw_pcie_writel_dbi(pci, PCIE_ATU_UPPER_TARGET, upper_32_bits(pci_addr));
     val = type | PCIE_ATU_FUNC_NUM(func_no);
-    val = ((upper_32_bits(size - 1)) && (priv->version >= 0x460A))
+    val = ((upper_32_bits(size - 1)) && dw_pcie_ver_is_ge(priv, 460A))
               ? val | PCIE_ATU_INCREASE_REGION_SIZE
               : val;
     dw_pcie_writel_dbi(pci, PCIE_ATU_REGION_CTRL1, val);
@@ -270,6 +264,23 @@ void dw_pcie_set_version(struct pci_host_bridge *bridge, unsigned int version)
     priv->version = version;
 }
 
+static void dw_pcie_version_detect(struct pci_host_bridge *bridge)
+{
+    struct dw_pcie_priv *pci = bridge->priv;
+    uint32_t ver;
+
+    /* The content of the CSR is zero on DWC PCIe older than v4.70a */
+    ver = dw_pcie_readl_dbi(bridge, PCIE_VERSION_NUMBER);
+    if ( !ver )
+        return;
+
+    if ( pci->version && pci->version != ver )
+        printk(XENLOG_WARNING "Versions don't match (%08x != %08x)\n",
+               pci->version, ver);
+    else
+        pci->version = ver;
+}
+
 void __iomem *dw_pcie_child_map_bus(struct pci_host_bridge *bridge,
                                     pci_sbdf_t sbdf, uint32_t where)
 {
@@ -295,21 +306,8 @@ int dw_pcie_child_config_read(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
     struct dw_pcie_priv *priv = bridge->priv;
     int ret;
 
-    /*
-     * FIXME: we cannot read iATU settings at the early initialization
-     * (probe) as the host's HW is not yet initialized at that phase.
-     * This read operation is the very first thing Domain-0 will do
-     * during its initialization, so take this opportunity and read
-     * iATU setting now.
-     */
-    if ( unlikely(!priv->iatu_unroll_initilized) )
-    {
-        dw_pcie_read_iatu_unroll_enabled(bridge);
-        priv->iatu_unroll_initilized = true;
-    }
-
     ret = pci_generic_config_read(bridge, sbdf, reg, len, value);
-    if ( !ret && (priv->num_viewport <= 2) )
+    if ( !ret && (priv->num_ob_windows <= 2) )
         ret = dw_pcie_prog_outbound_atu(bridge, 0, PCIE_ATU_TYPE_IO,
                                         bridge->child_cfg->phys_addr, 0,
                                         bridge->child_cfg->size);
@@ -324,7 +322,7 @@ int dw_pcie_child_config_write(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
     int ret;
 
     ret = pci_generic_config_write(bridge, sbdf, reg, len, value);
-    if ( !ret && (priv->num_viewport <= 2) )
+    if ( !ret && (priv->num_ob_windows <= 2) )
         ret = dw_pcie_prog_outbound_atu(bridge, 0, PCIE_ATU_TYPE_IO,
                                         bridge->child_cfg->phys_addr, 0,
                                         bridge->child_cfg->size);
@@ -344,6 +342,191 @@ bool __init dw_pcie_child_need_p2m_hwdom_mapping(struct domain *d,
     return cfg->phys_addr != addr;
 }
 
+static int dw_pcie_iatu_detect(struct pci_host_bridge *bridge)
+{
+    struct dw_pcie_priv *pci = bridge->priv;
+    unsigned int max_region, ob;
+    uint32_t val, min_limit;
+    uint64_t max;
+
+    val = dw_pcie_readl_dbi(bridge, PCIE_ATU_VIEWPORT);
+    if ( val == 0xFFFFFFFFU )
+    {
+        dw_pcie_cap_set(pci, IATU_UNROLL);
+
+        max_region = min((int)pci->atu_size / 512, 256);
+    }
+    else
+    {
+        pci->atu_base = pci->dbi_base + PCIE_ATU_VIEWPORT_BASE;
+        pci->atu_size = PCIE_ATU_VIEWPORT_SIZE;
+
+        dw_pcie_writel_dbi(bridge, PCIE_ATU_VIEWPORT, 0xFF);
+        max_region = dw_pcie_readl_dbi(bridge, PCIE_ATU_VIEWPORT) + 1;
+    }
+
+    for ( ob = 0; ob < max_region; ob++ )
+    {
+        dw_pcie_writel_ob_unroll(bridge, ob, PCIE_ATU_LOWER_TARGET, 0x11110000);
+        val = dw_pcie_readl_ob_unroll(bridge, ob, PCIE_ATU_LOWER_TARGET);
+        if ( val != 0x11110000 )
+            break;
+    }
+
+    if ( !ob )
+    {
+        printk(XENLOG_ERR "No outbound iATU regions found\n");
+        return -ENODEV;
+    }
+
+    dw_pcie_writel_atu(bridge, PCIE_ATU_LIMIT, 0x0);
+    min_limit = dw_pcie_readl_atu(bridge, PCIE_ATU_LIMIT);
+
+    if ( dw_pcie_ver_is_ge(pci, 460A) )
+    {
+        dw_pcie_writel_atu(bridge, PCIE_ATU_UPPER_LIMIT, 0xFFFFFFFFU);
+        max = dw_pcie_readl_atu(bridge, PCIE_ATU_UPPER_LIMIT);
+    }
+    else
+        max = 0;
+
+    pci->num_ob_windows = ob;
+    pci->region_align = 1 << fls(min_limit);
+    pci->region_limit = (max << 32) | (SZ_4G - 1);
+
+    printk(XENLOG_INFO "iATU: unroll %s, %u ob, align %uK, limit %luG\n",
+           dw_pcie_cap_is(pci, IATU_UNROLL) ? "T" : "F",
+           pci->num_ob_windows, pci->region_align / SZ_1K,
+           (pci->region_limit + 1) / SZ_1G);
+
+    return 0;
+}
+
+static void dw_pcie_dbi_ro_wr_en(struct pci_host_bridge *pci)
+{
+    uint32_t reg;
+    uint32_t val;
+
+    reg = PCIE_MISC_CONTROL_1_OFF;
+    val = dw_pcie_readl_dbi(pci, reg);
+    val |= PCIE_DBI_RO_WR_EN;
+    dw_pcie_writel_dbi(pci, reg, val);
+}
+
+static void dw_pcie_dbi_ro_wr_dis(struct pci_host_bridge *pci)
+{
+    uint32_t reg;
+    uint32_t val;
+
+    reg = PCIE_MISC_CONTROL_1_OFF;
+    val = dw_pcie_readl_dbi(pci, reg);
+    val &= ~PCIE_DBI_RO_WR_EN;
+    dw_pcie_writel_dbi(pci, reg, val);
+}
+
+static int dw_pcie_iatu_setup_range(const struct dt_device_node *dev,
+                                    uint32_t flags, uint64_t addr,
+                                    uint64_t length, void *data)
+{
+    struct pci_host_bridge *bridge = data;
+    struct dw_pcie_priv *pci = bridge->priv;
+    int ret;
+
+    if ( !dt_range_is_memory(flags) )
+        return 0;
+
+    if ( pci->num_ob_windows <= ++(pci->ranges) )
+        return 1;
+
+    ret = dw_pcie_prog_outbound_atu(bridge, pci->ranges, PCIE_ATU_TYPE_MEM,
+                                    addr, addr, length);
+    if ( ret )
+    {
+        printk(XENLOG_ERR "Failed to set MEM range [%#lx-%#lx]\n",
+               addr, addr + length - 1);
+        return ret;
+    }
+
+    return 0;
+}
+
+static int dw_pcie_iatu_setup(struct pci_host_bridge *bridge)
+{
+    struct dw_pcie_priv *pci = bridge->priv;
+
+    /* Note the very first outbound ATU is used for CFG IOs */
+    if ( !pci->num_ob_windows )
+    {
+        printk(XENLOG_ERR "No outbound iATU found\n");
+        return -EINVAL;
+    }
+
+    dt_for_each_range(bridge->dt_node, dw_pcie_iatu_setup_range, bridge);
+
+    if ( pci->num_ob_windows <= pci->ranges )
+        printk(XENLOG_WARNING "Ranges exceed outbound iATU size (%d)\n",
+             pci->num_ob_windows);
+
+    return 0;
+}
+
+static int dw_pcie_setup_rc(struct pci_host_bridge *pci)
+{
+    uint32_t val;
+
+    /*
+     * Enable DBI read-only registers for writing/updating configuration.
+     * Write permission gets disabled towards the end of this function.
+     */
+    dw_pcie_dbi_ro_wr_en(pci);
+
+    /* Setup RC BARs */
+    dw_pcie_writel_dbi(pci, PCI_BASE_ADDRESS_0, 0x00000004);
+    dw_pcie_writel_dbi(pci, PCI_BASE_ADDRESS_1, 0x00000000);
+
+    /* Setup interrupt pins */
+    val = dw_pcie_readl_dbi(pci, PCI_INTERRUPT_LINE);
+    val &= 0xffff00ffU;
+    val |= 0x00000100;
+    dw_pcie_writel_dbi(pci, PCI_INTERRUPT_LINE, val);
+
+    /* Setup bus numbers */
+    val = dw_pcie_readl_dbi(pci, PCI_PRIMARY_BUS);
+    val &= 0xff000000U;
+    val |= 0x00ff0100;
+    dw_pcie_writel_dbi(pci, PCI_PRIMARY_BUS, val);
+
+    /* Setup command register */
+    val = dw_pcie_readl_dbi(pci, PCI_COMMAND);
+    val &= 0xffff0000U;
+    val |= PCI_COMMAND_IO | PCI_COMMAND_MEMORY |
+           PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
+    dw_pcie_writel_dbi(pci, PCI_COMMAND, val);
+
+    /*
+     * If the platform provides its own child bus config accesses, it means
+     * the platform uses its own address translation component rather than
+     * ATU, so we should not program the ATU here.
+     */
+    if ( pci->child_ops->map_bus == dw_pcie_child_map_bus )
+    {
+        int ret;
+
+        ret = dw_pcie_iatu_setup(pci);
+        if ( ret )
+            return ret;
+    }
+
+    dw_pcie_writel_dbi(pci, PCI_BASE_ADDRESS_0, 0);
+
+    /* Program correct class for RC */
+    dw_pcie_writew_dbi(pci, PCI_CLASS_DEVICE, PCI_CLASS_BRIDGE_PCI);
+
+    dw_pcie_dbi_ro_wr_dis(pci);
+
+    return 0;
+}
+
 struct pci_host_bridge *__init
 dw_pcie_host_probe(struct dt_device_node *dev, const void *data,
                    const struct pci_ecam_ops *ops,
@@ -352,9 +535,9 @@ dw_pcie_host_probe(struct dt_device_node *dev, const void *data,
     struct pci_host_bridge *bridge;
     struct dw_pcie_priv *priv;
 
-    paddr_t atu_phys_addr;
-    paddr_t atu_size;
-    int atu_idx, ret;
+    paddr_t phys_addr;
+    paddr_t size;
+    int idx, ret;
 
     bridge = pci_host_common_probe(dev, ops, child_ops);
     if ( IS_ERR(bridge) )
@@ -366,37 +549,61 @@ dw_pcie_host_probe(struct dt_device_node *dev, const void *data,
 
     bridge->priv = priv;
 
-    atu_idx = dt_property_match_string(dev, "reg-names", "atu");
-    if ( atu_idx < 0 )
+    idx = dt_property_match_string(dev, "reg-names", "dbi");
+    if ( idx < 0 )
+    {
+        printk(XENLOG_ERR "Cannot find \"dbi\" reg index in device tree\n");
+        return ERR_PTR(idx);
+    }
+    ret = dt_device_get_address(dev, idx, &phys_addr, &size);
+    if ( ret )
+    {
+        printk(XENLOG_ERR "Cannot find \"dbi\" reg in device tree\n");
+        return ERR_PTR(ret);
+    }
+    priv->dbi_base = ioremap_nocache(phys_addr, size);
+    if ( !priv->dbi_base )
+    {
+        printk(XENLOG_ERR "DBI ioremap failed\n");
+        return ERR_PTR(ENXIO);
+    }
+    priv->dbi_size = size;
+    printk("DBI at [mem 0x%" PRIpaddr "-0x%" PRIpaddr "]\n", phys_addr,
+           phys_addr + size - 1);
+
+    idx = dt_property_match_string(dev, "reg-names", "atu");
+    if ( idx < 0 )
     {
         printk(XENLOG_ERR "Cannot find \"atu\" range index in device tree\n");
-        return ERR_PTR(atu_idx);
+        return ERR_PTR(idx);
     }
-    ret = dt_device_get_address(dev, atu_idx, &atu_phys_addr, &atu_size);
+    ret = dt_device_get_address(dev, idx, &phys_addr, &size);
     if ( ret )
     {
         printk(XENLOG_ERR "Cannot find \"atu\" range in device tree\n");
         return ERR_PTR(ret);
     }
-    printk("iATU at [mem 0x%" PRIpaddr "-0x%" PRIpaddr "]\n", atu_phys_addr,
-           atu_phys_addr + atu_size - 1);
-    priv->atu_base = ioremap_nocache(atu_phys_addr, atu_size);
+    printk("iATU at [mem 0x%" PRIpaddr "-0x%" PRIpaddr "]\n", phys_addr,
+           phys_addr + size - 1);
+    priv->atu_base = ioremap_nocache(phys_addr, size);
     if ( !priv->atu_base )
     {
         printk(XENLOG_ERR "iATU ioremap failed\n");
         return ERR_PTR(ENXIO);
     }
+    priv->atu_size = size;
 
-    if ( !dt_property_read_u32(dev, "num-viewport", &priv->num_viewport) )
-        priv->num_viewport = 2;
+    dw_pcie_version_detect(bridge);
 
-    /*
-     * FIXME: we cannot read iATU unroll enable now as the host bridge's
-     * HW is not yet initialized by Domain-0: leave it for later.
-     */
+    ret = dw_pcie_iatu_detect(bridge);
+    if ( ret )
+        return ERR_PTR(ret);
 
-    printk(XENLOG_INFO "%s number of view ports: %d\n", dt_node_full_name(dev),
-           priv->num_viewport);
+    ret = dw_pcie_setup_rc(bridge);
+    if ( ret )
+        return ERR_PTR(ret);
+
+    /* iATU unroll enable will be read on first config space access */
 
     return bridge;
 }

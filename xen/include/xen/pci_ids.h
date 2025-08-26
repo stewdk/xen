@@ -1,6 +1,9 @@
 #ifndef XEN_PCI_IDS_H
 #define XEN_PCI_IDS_H
 
+#define PCI_BASE_CLASS_BRIDGE            0x06
+#define PCI_CLASS_BRIDGE_PCI             0x0604
+
 #define PCI_VENDOR_ID_AMD                0x1022
 
 #define PCI_VENDOR_ID_NVIDIA             0x10de

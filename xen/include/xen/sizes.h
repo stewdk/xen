@@ -45,4 +45,6 @@
 #define SZ_1G                           0x40000000
 #define SZ_2G                           0x80000000
 
+#define SZ_4G                           _AC(0x100000000, ULL)
+
 #endif /* __XEN_SIZES_H__ */

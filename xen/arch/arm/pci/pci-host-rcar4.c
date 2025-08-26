@@ -14,7 +14,7 @@
 
 #include "pci-designware.h"
 
-#define RCAR4_DWC_VERSION       0x520A
+#define RCAR4_DWC_VERSION       DW_PCIE_VER_520A
 
 /* PCIE BDF-OSID assignment */
 #define CNVID(n)             (0x700 + ((n) * 4))

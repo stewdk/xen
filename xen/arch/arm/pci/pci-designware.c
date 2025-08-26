@@ -153,7 +153,7 @@ static void dw_pcie_writel_atu(struct pci_host_bridge *pci, uint32_t reg,
 static uint32_t dw_pcie_readl_ob_unroll(struct pci_host_bridge *pci,
                                         uint32_t index, uint32_t reg)
 {
-    uint32_t offset = PCIE_GET_ATU_OUTB_UNR_REG_OFFSET(index);
+    uint32_t offset = PCIE_ATU_UNROLL_BASE(PCIE_ATU_REGION_DIR_OB, index);
 
     return dw_pcie_readl_atu(pci, offset + reg);
 }
@@ -161,7 +161,7 @@ static uint32_t dw_pcie_readl_ob_unroll(struct pci_host_bridge *pci,
 static void dw_pcie_writel_ob_unroll(struct pci_host_bridge *pci,
                                      uint32_t index, uint32_t reg, uint32_t val)
 {
-    uint32_t offset = PCIE_GET_ATU_OUTB_UNR_REG_OFFSET(index);
+    uint32_t offset = PCIE_ATU_UNROLL_BASE(PCIE_ATU_REGION_DIR_OB, index);
 
     dw_pcie_writel_atu(pci, offset + reg, val);
 }
@@ -202,7 +202,7 @@ static int dw_pcie_prog_outbound_atu_unroll(struct pci_host_bridge *pci,
         if ( val & PCIE_ATU_ENABLE )
             return 0;
 
-        mdelay(LINK_WAIT_IATU_DELAY_MS);
+        mdelay(LINK_WAIT_IATU);
     }
     printk(XENLOG_G_ERR "Outbound iATU is not being enabled\n");
 
@@ -222,7 +222,7 @@ static int __dw_pcie_prog_outbound_atu(struct pci_host_bridge *pci,
                                                 cpu_addr, pci_addr, size);
 
     dw_pcie_writel_dbi(pci, PCIE_ATU_VIEWPORT,
-                       PCIE_ATU_REGION_OUTBOUND | index);
+                       PCIE_ATU_REGION_DIR_OB | index);
     dw_pcie_writel_dbi(pci, PCIE_ATU_LOWER_BASE, lower_32_bits(cpu_addr));
     dw_pcie_writel_dbi(pci, PCIE_ATU_UPPER_BASE, upper_32_bits(cpu_addr));
     dw_pcie_writel_dbi(pci, PCIE_ATU_LIMIT, lower_32_bits(cpu_addr + size - 1));
@@ -235,8 +235,8 @@ static int __dw_pcie_prog_outbound_atu(struct pci_host_bridge *pci,
     val = ((upper_32_bits(size - 1)) && (priv->version >= 0x460A))
               ? val | PCIE_ATU_INCREASE_REGION_SIZE
               : val;
-    dw_pcie_writel_dbi(pci, PCIE_ATU_CR1, val);
-    dw_pcie_writel_dbi(pci, PCIE_ATU_CR2, PCIE_ATU_ENABLE);
+    dw_pcie_writel_dbi(pci, PCIE_ATU_REGION_CTRL1, val);
+    dw_pcie_writel_dbi(pci, PCIE_ATU_REGION_CTRL2, PCIE_ATU_ENABLE);
 
     /*
      * Make sure ATU enable takes effect before any subsequent config
@@ -244,11 +244,11 @@ static int __dw_pcie_prog_outbound_atu(struct pci_host_bridge *pci,
      */
     for ( retries = 0; retries < LINK_WAIT_MAX_IATU_RETRIES; retries++ )
     {
-        val = dw_pcie_readl_dbi(pci, PCIE_ATU_CR2);
+        val = dw_pcie_readl_dbi(pci, PCIE_ATU_REGION_CTRL2);
         if ( val & PCIE_ATU_ENABLE )
             return 0;
 
-        mdelay(LINK_WAIT_IATU_DELAY_MS);
+        mdelay(LINK_WAIT_IATU);
     }
     printk(XENLOG_G_ERR "Outbound iATU is not being enabled\n");
 
@@ -280,8 +280,7 @@ void __iomem *dw_pcie_child_map_bus(struct pci_host_bridge *bridge,
              PCIE_ATU_FUNC(PCI_FUNC(sbdf.devfn));
 
     /* FIXME: Parent is the root bus, so use PCIE_ATU_TYPE_CFG0. */
-    ret = dw_pcie_prog_outbound_atu(bridge, PCIE_ATU_REGION_INDEX0,
-                                    PCIE_ATU_TYPE_CFG0,
+    ret = dw_pcie_prog_outbound_atu(bridge, 0, PCIE_ATU_TYPE_CFG0,
                                     bridge->child_cfg->phys_addr, busdev,
                                     bridge->child_cfg->size);
     if ( ret )
@@ -311,8 +310,7 @@ int dw_pcie_child_config_read(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
 
     ret = pci_generic_config_read(bridge, sbdf, reg, len, value);
     if ( !ret && (priv->num_viewport <= 2) )
-        ret = dw_pcie_prog_outbound_atu(bridge, PCIE_ATU_REGION_INDEX0,
-                                        PCIE_ATU_TYPE_IO,
+        ret = dw_pcie_prog_outbound_atu(bridge, 0, PCIE_ATU_TYPE_IO,
                                         bridge->child_cfg->phys_addr, 0,
                                         bridge->child_cfg->size);
 
@@ -327,8 +325,7 @@ int dw_pcie_child_config_write(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
 
     ret = pci_generic_config_write(bridge, sbdf, reg, len, value);
     if ( !ret && (priv->num_viewport <= 2) )
-        ret = dw_pcie_prog_outbound_atu(bridge, PCIE_ATU_REGION_INDEX0,
-                                        PCIE_ATU_TYPE_IO,
+        ret = dw_pcie_prog_outbound_atu(bridge, 0, PCIE_ATU_TYPE_IO,
                                         bridge->child_cfg->phys_addr, 0,
                                         bridge->child_cfg->size);
     return ret;
